@@ -1,16 +1,57 @@
 import { Trans } from "@lingui/react/macro";
-import { createFileRoute, Outlet, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useRouter, useSearch } from "@tanstack/react-router";
 import { SidebarProvider } from "@reactive-resume/ui/components/sidebar";
 import { createNoindexFollowMeta } from "@/libs/seo";
 import { getDashboardSidebarState, setDashboardSidebarState } from "./-components/functions";
 import { DashboardSidebar } from "./-components/sidebar";
+import { authClient } from "@/libs/auth/client";
+
+const devSearchSchema = {
+  dev: false,
+} as const;
 
 export const Route = createFileRoute("/dashboard")({
-	component: RouteComponent,
-	beforeLoad: ({ context }) => {
-		if (!context.session) throw redirect({ to: "/auth/login", replace: true });
-		return { session: context.session };
-	},
+  component: RouteComponent,
+  validateSearch: (search: Record<string, unknown>) => {
+    return { dev: search.dev === "true" };
+  },
+  beforeLoad: async ({ context, search }) => {
+    // Dev mode: auto-sign-in with a dev account to skip the auth gate
+    if (!context.session && search.dev && import.meta.env.DEV) {
+      const devEmail = "dev@primeresume.local";
+      const devPassword = "devpass123";
+      const devUsername = "dev";
+      const devName = "Dev User";
+
+      try {
+        // Try signing in first
+        await authClient.signIn.email({
+          email: devEmail,
+          password: devPassword,
+        });
+        const { data } = await authClient.getSession();
+        if (data) return { session: data as typeof context.session };
+      } catch {
+        // If dev sign-in fails, try creating the account
+        try {
+          await authClient.signUp.email({
+            name: devName,
+            username: devUsername,
+            email: devEmail,
+            password: devPassword,
+          });
+          // autoSignIn is enabled, so user should be signed in after signUp
+          const { data } = await authClient.getSession();
+          if (data) return { session: data as typeof context.session };
+        } catch {
+          // Silently fall through to normal auth
+        }
+      }
+    }
+
+    if (!context.session) throw redirect({ to: "/auth/login", replace: true });
+    return { session: context.session };
+  },
 	loader: () => {
 		const sidebarState = getDashboardSidebarState();
 		return { sidebarState };

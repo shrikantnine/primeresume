@@ -7,7 +7,8 @@
 
   onMount(() => {
     const isDev = import.meta.env.DEV;
-    iframeSrc = isDev ? 'http://localhost:3000' : '/app';
+    // Pass dev=true to skip the Reactive Resume auth gate in dev mode
+    iframeSrc = isDev ? 'http://localhost:3000/dashboard?dev=true' : '/app/dashboard';
   });
 
   function handleIframeLoad() {
