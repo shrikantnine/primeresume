@@ -14,7 +14,9 @@
     // In production, this redirects to the OAuth provider
     // After successful auth, user lands on the resume dashboard
     console.log(`Signing in with ${provider}`);
-    window.location.href = '/dashboard';
+    close();
+    // Use hash-based routing so svelte-spa-router picks up /dashboard
+    window.location.hash = '#/dashboard';
   }
 
   function handleBackdropClick(e) {
